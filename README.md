@@ -24,7 +24,6 @@ kinds of chart and a downloadable PDF report — without writing a line of code.
 - [Tech stack](#tech-stack)
 - [Known limitations](#known-limitations)
 - [Roadmap](#roadmap)
-- [Team](#team)
 - [License](#license)
 
 ---
@@ -304,18 +303,6 @@ Copy `landing/wake.js` across and preheat Render from the link itself:
 - Per-chart export presets and configurable report layouts
 - Multi-sheet Excel support
 - Persist dashboards across sessions
-
-## Team
-
-**Batch 19/20 · SR University**
-
-| Roll no.    | Name              | Contribution   |
-|-------------|-------------------|----------------|
-| 2503A51L34  | Uzma Yasmeen      | Development    |
-| 2503A51L07  | Sahasra           | Data gathering |
-| 2503A51L05  | Sathya Sri Charan | Testing        |
-| 2503A51L33  | Shiva             | Documentation  |
-| 2503A51L06  | Nagamrutha        | Presentation   |
 
 ## License
 

@@ -1,0 +1,41 @@
+# Lint configuration.
+#
+# app.py is kept exactly as written. The rule set below is chosen to catch
+# real defects — undefined names, unused imports, broken f-strings, syntax
+# errors — and to stay out of the way on style.
+#
+# Ruff's default set also flags three things in this codebase that are
+# deliberate, not mistakes:
+#
+#   BLE001  "do not catch blind Exception"
+#           app.py wraps file loading and plotting in `except Exception` on
+#           purpose. In a Streamlit app that is the difference between a
+#           friendly "Error reading Excel file" message and a raw traceback
+#           dumped in the user's browser. Catching broadly is correct here.
+#
+#   C408    "rewrite dict(...) as a literal"
+#           `boxprops=dict(color=main_color)` is the idiom Matplotlib's own
+#           documentation uses. Rewriting it would read worse.
+#
+#   I001    "import block is un-sorted"
+#           Pure formatting, and reordering imports in the one file that is
+#           the whole application buys nothing.
+#
+# None are bugs, so none are enforced.
+
+target-version = "py311"
+line-length = 120
+
+[lint]
+select = [
+  "E4",  # import placement mistakes
+  "E7",  # statement-level errors
+  "E9",  # syntax errors and IO failures
+  "F",   # pyflakes: undefined names, unused imports, f-string bugs
+  "W",   # trailing whitespace, missing final newline
+]
+
+[lint.per-file-ignores]
+# Streamlit scripts run top-to-bottom; module-level code after imports is
+# the framework's normal shape, not a smell.
+"app.py" = ["E402"]

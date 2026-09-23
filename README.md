@@ -203,8 +203,8 @@ shared with any other free service on the account.
 Run it by hand before a demo (**Actions → Keep Render awake → Run workflow**),
 or uncomment the `schedule:` block if traffic ever justifies it.
 
-**Layer 2 — wake it before it's needed.** If the instance *has* gone to sleep,
-`landing/index.html` handles it. The moment someone loads that page:
+**Layer 2 — wake it, then make it paint.** `landing/index.html` handles both
+halves of the cold start. The moment someone loads that page:
 
 - a `<link rel="preconnect">` opens the TCP/TLS connection to Render
 - `wake.js` fires a `keepalive` request at `/_stcore/health`, which is what
@@ -216,6 +216,26 @@ or uncomment the `schedule:` block if traffic ever justifies it.
   page only hands over once one of them genuinely confirms the app is serving
 - if the visitor clicks **Open** before it's ready, the click is held and
   fires automatically the instant it is
+
+Waking the server is only half the problem, though. Streamlit serves this:
+
+```html
+<body>
+  <noscript>You need to enable JavaScript to run this app.</noscript>
+  <div id="root"></div>
+</body>
+```
+
+An empty div. The page is built entirely in JavaScript, so a visitor handed
+over the moment the server responds *still* watches a white screen while
+roughly forty script chunks download.
+
+So there is a second phase. Once the server answers, the page loads the app
+once in an offscreen iframe before handing over. Streamlit serves its assets
+`Cache-Control: public, immutable, max-age=31536000`, so the real navigation
+afterwards reads them from disk cache and paints almost immediately. The
+iframe is torn down once loaded — it exists only for that caching side
+effect.
 
 The `<img>` probe is the important one, and on this deployment it is the only
 one that actually fires. Two things make it necessary:

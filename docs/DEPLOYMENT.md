@@ -162,14 +162,28 @@ Visitor opens the Pages URL
         │
         ├─ progress bar paces against a ~55 s expected cold start
         │
-        └─ poll every 1.5 s with three probes in parallel:
+        └─ PHASE 1 — poll every 1.5 s with three probes in parallel:
                  ① CORS read of /_stcore/health   → definitive when it works
                  ② <img> load of /favicon.png     → cannot be faked by a 502
                  ③ opaque reachability fetch      → trusted only twice in a row
                                                      and after 8 s have passed
                         │
-                        └─ first confirmation → hand the visitor over
+                        └─ first confirmation → the server is up
+                                 │
+                                 └─ PHASE 2 — load the app in an offscreen
+                                    iframe so its ~40 JS chunks land in the
+                                    browser cache, then tear the frame down
+                                            │
+                                            └─ hand the visitor over
 ```
+
+**Why phase 2 exists.** Streamlit's root document is an empty
+`<div id="root"></div>`; the entire page is built in JavaScript. Handing over
+as soon as the server responds trades a blank tab waiting on Render for a
+blank tab waiting on Streamlit — the visitor still stares at white. The assets
+are served `Cache-Control: public, immutable, max-age=31536000`, so loading
+them once in a throwaway iframe means the real navigation paints from disk
+cache.
 
 Probe ② carries the most weight. While an instance boots, Render answers with
 a 502 HTML error page, and an opaque `fetch` resolves on that exactly as it

@@ -230,6 +230,7 @@
   var APP_URL = (cfg.appUrl || "").replace(/\/+$/, "");
   var MAX_WAIT = cfg.maxWaitMs || 90000;
   var EXPECTED = cfg.expectedColdStartMs || 55000;
+  var PRELOAD_MS = cfg.preloadMs || 20000;
 
   var launch = document.getElementById("launch");
   var label = document.getElementById("launch-label");
@@ -253,44 +254,73 @@
 
   var ready = false;
   var userWantsIn = false;   // true once the visitor has clicked Open
+  var phase = "waking";      // waking -> loading -> ready
+  var started = Date.now();
 
-  function setReady() {
+  /* Two phases, because waking the server is only half of it. The server
+     answering means the HTML arrives; it does not mean anything is drawn.
+     Phase 1 fills the bar to 70%, phase 2 creeps it to 95%, and only a
+     genuinely painted app takes it to 100%. */
+  function progress() {
+    var elapsed = Date.now() - started;
+    if (phase === "waking") return Math.min(70, elapsed / EXPECTED * 70);
+    if (phase === "loading") {
+      var since = Date.now() - phaseStartedAt;
+      return 70 + Math.min(25, since / PRELOAD_MS * 25);
+    }
+    return 100;
+  }
+
+  var phaseStartedAt = Date.now();
+  var ticker = setInterval(function () {
+    if (ready) { clearInterval(ticker); return; }
+    bar.style.width = progress().toFixed(1) + "%";
+    var secs = Math.round((Date.now() - started) / 1000);
+    statusText.textContent = phase === "waking"
+      ? "Starting the server… " + secs + "s"
+      : "Loading the dashboard… " + secs + "s";
+  }, 500);
+
+  function setReady(degraded) {
     if (ready) return;
     ready = true;
-    dot.className = "dot ready";
-    statusText.textContent = "Server ready";
-    bar.classList.add("ready");
+    clearInterval(ticker);
+    dot.className = degraded ? "dot" : "dot ready";
+    bar.classList.toggle("ready", !degraded);
     bar.style.width = "100%";
-    label.textContent = "Open DataViz Studio";
     launch.removeAttribute("aria-disabled");
-    note.textContent = "The dashboard is awake and ready.";
+    label.textContent = "Open DataViz Studio";
+
+    if (degraded) {
+      statusText.textContent = "Taking longer than usual";
+      note.textContent = "The server is slow to start, but opening it directly should still work.";
+    } else {
+      statusText.textContent = "Ready";
+      note.textContent = "The dashboard is awake and its assets are cached — it will open straight away.";
+    }
+
     if (userWantsIn) window.location.href = APP_URL;
   }
 
-  /* Pace the progress bar against the expected cold start. It never
-     reaches 100% on its own — only a real readiness signal does that. */
-  var started = Date.now();
-  var ticker = setInterval(function () {
-    if (ready) { clearInterval(ticker); return; }
-    var elapsed = Date.now() - started;
-    bar.style.width = Math.min(94, elapsed / EXPECTED * 100).toFixed(1) + "%";
-    statusText.textContent = "Starting the server… " + Math.round(elapsed / 1000) + "s";
-  }, 500);
-
-  /* The bit that matters: the wake request goes out the moment the page
-     is hit, before the visitor has decided to click anything. */
-  DataVizWake.waitUntilAwake(APP_URL, { maxWaitMs: MAX_WAIT }).then(function (outcome) {
-    clearInterval(ticker);
-    if (outcome === "ready") { setReady(); return; }
-
-    // Waited past the cap. Render is almost certainly up by now, so let
-    // the visitor through rather than trapping them on this page.
-    ready = true;
-    dot.className = "dot";
-    bar.style.width = "100%";
-    statusText.textContent = "Taking longer than usual";
-    note.textContent = "The server is slow to start, but opening it directly should still work.";
-    if (userWantsIn) window.location.href = APP_URL;
+  /* The wake request goes out the moment the page is hit, before the
+     visitor has decided to click anything. */
+  DataVizWake.prepare(APP_URL, {
+    maxWaitMs: MAX_WAIT,
+    preloadMs: PRELOAD_MS,
+    onPhase: function (next) {
+      if (next === "loading" && phase === "waking") {
+        phase = "loading";
+        phaseStartedAt = Date.now();
+        note.textContent =
+          "Server's up. Fetching the dashboard's assets so it opens instantly "
+          + "instead of on a blank screen.";
+      }
+    },
+  }).then(function (outcome) {
+    // "timeout" means no probe ever confirmed the server. Render is almost
+    // certainly up by now, so let the visitor through rather than trapping
+    // them here — but say so honestly rather than claiming success.
+    setReady(outcome === "timeout");
   });
 
   launch.addEventListener("click", function (e) {
@@ -298,7 +328,9 @@
     e.preventDefault();
     userWantsIn = true;
     launch.setAttribute("aria-disabled", "true");
-    label.textContent = "Waking the server…";
+    label.textContent = phase === "waking"
+      ? "Waking the server…"
+      : "Almost there…";
   });
 
   // Re-ping if the tab sat in the background long enough for Render to nap.

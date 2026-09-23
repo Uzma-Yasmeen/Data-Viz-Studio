@@ -14,4 +14,10 @@ window.DATAVIZ_CONFIG = {
   // Roughly how long a free Render instance takes to boot. Used only to
   // pace the progress bar, never to decide that the app is actually up.
   expectedColdStartMs: 55000,
+
+  // Cap on the second phase: once the server answers, the app is loaded
+  // once in an offscreen iframe so its JavaScript is in the browser cache
+  // before the visitor arrives. Without this they reach a woken server
+  // and still watch a blank screen while Streamlit builds the page.
+  preloadMs: 20000,
 };

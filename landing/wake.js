@@ -146,6 +146,82 @@
     });
   }
 
+  /* ------------------------------------------------------------------
+     Second half of the problem: a woken server still paints nothing.
+
+     Streamlit serves an empty <div id="root"></div> and builds the page
+     in JavaScript, so a visitor handed over the moment the server
+     responds still watches a white screen while ~40 chunks download.
+
+     So before handing over, load the app once in an offscreen iframe.
+     Its assets are served `Cache-Control: public, immutable,
+     max-age=31536000`, so the real navigation afterwards reads them from
+     disk cache and paints almost immediately.
+     ------------------------------------------------------------------ */
+  function preload(appUrl, options) {
+    options = options || {};
+    var timeoutMs = options.timeoutMs || 20000;
+    var settleMs = options.settleMs || 1200;
+
+    return new Promise(function (resolve) {
+      var frame = document.createElement("iframe");
+      frame.setAttribute("aria-hidden", "true");
+      frame.setAttribute("tabindex", "-1");
+      frame.title = "Preloading DataViz Studio";
+      // Offscreen rather than display:none — both still load, but an
+      // offscreen frame is less likely to be treated as hidden and
+      // deprioritised.
+      frame.style.cssText =
+        "position:absolute;left:-9999px;top:0;width:1024px;height:768px;" +
+        "border:0;opacity:0;pointer-events:none;";
+
+      var done = false;
+      var timer;
+
+      function finish(result) {
+        if (done) return;
+        done = true;
+        clearTimeout(timer);
+        frame.onload = frame.onerror = null;
+
+        // The frame holds an open websocket session on the server, and we
+        // only ever wanted its caching side effect. Give late-arriving
+        // lazy chunks a moment to land, then tear it down.
+        setTimeout(function () {
+          if (frame.parentNode) frame.parentNode.removeChild(frame);
+        }, settleMs);
+
+        setTimeout(function () { resolve(result); }, settleMs);
+      }
+
+      timer = setTimeout(function () { finish("timeout"); }, timeoutMs);
+      frame.onload = function () { finish("loaded"); };
+      frame.onerror = function () { finish("error"); };
+
+      frame.src = appUrl;
+      document.body.appendChild(frame);
+    });
+  }
+
+  /* Wake the server, then warm the browser cache. Resolves once the app
+     will actually paint on arrival, not merely respond. */
+  function prepare(appUrl, options) {
+    options = options || {};
+    var onPhase = options.onPhase || function () {};
+
+    onPhase("waking");
+    return waitUntilAwake(appUrl, {
+      maxWaitMs: options.maxWaitMs,
+      onTick: options.onTick,
+    }).then(function (outcome) {
+      onPhase("loading");
+      return preload(appUrl, { timeoutMs: options.preloadMs }).then(function () {
+        onPhase("ready");
+        return outcome;
+      });
+    });
+  }
+
   /* Warm the instance when a link to the app is about to be used —
      pointer hover, touch start, or the link scrolling into view.
      Usage: DataVizWake.warmOnIntent('a.project-link', appUrl) */
@@ -178,6 +254,8 @@
   global.DataVizWake = {
     ping: ping,
     waitUntilAwake: waitUntilAwake,
+    preload: preload,
+    prepare: prepare,
     warmOnIntent: warmOnIntent,
   };
 })(window);

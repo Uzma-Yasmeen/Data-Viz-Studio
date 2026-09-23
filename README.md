@@ -4,7 +4,7 @@
 Excel file and get automated exploratory analysis, correlation heatmaps, nine
 kinds of chart and a downloadable PDF report — without writing a line of code.
 
-> Built with Streamlit · SR University · Batch 19/20
+> Built with Streamlit · SR University 
 
 [**Open the dashboard →**](https://data-viz-studio.onrender.com) &nbsp;•&nbsp;
 [Landing page](https://uzma-yasmeen.github.io/Data-Viz-Studio/) &nbsp;•&nbsp;

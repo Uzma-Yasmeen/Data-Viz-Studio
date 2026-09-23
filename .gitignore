@@ -33,6 +33,13 @@ htmlcov/
 # --- Notebooks ---
 .ipynb_checkpoints/
 
+# --- Presentation decks ---
+# Kept locally, not published. The project deck lists team members by name
+# and roll number, which doesn't belong in a public repo.
+*.pptx
+*.potx
+*.ppt
+
 # --- Generated output ---
 *.log
 DataVizStudio_Report.pdf

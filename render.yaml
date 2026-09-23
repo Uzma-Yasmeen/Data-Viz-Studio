@@ -1,0 +1,28 @@
+# Render Blueprint — https://render.com/docs/blueprint-spec
+# Create the service from this file: Render Dashboard -> New -> Blueprint.
+
+services:
+  - type: web
+    name: dataviz-studio
+    runtime: python
+    plan: free
+    region: singapore          # closest Render region to India; change if needed
+    branch: main
+    autoDeployTrigger: commit
+
+    buildCommand: pip install --upgrade pip && pip install -r requirements.txt
+    startCommand: bash start.sh
+
+    # Streamlit's built-in liveness endpoint. This is also the URL the
+    # landing page and the keep-alive workflow ping to wake the service.
+    healthCheckPath: /_stcore/health
+
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.9"
+      - key: PIP_DISABLE_PIP_VERSION_CHECK
+        value: "1"
+      # Matplotlib needs a writable cache dir; Render's default HOME works,
+      # but pinning it avoids a first-request font-cache rebuild.
+      - key: MPLCONFIGDIR
+        value: /tmp/matplotlib

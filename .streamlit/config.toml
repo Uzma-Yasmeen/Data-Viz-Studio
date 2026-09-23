@@ -1,0 +1,24 @@
+# Applies locally and on Render. Anything host-specific is passed as a CLI
+# flag in start.sh instead, so this file stays portable.
+
+[server]
+headless = true
+address = "0.0.0.0"
+maxUploadSize = 50          # MB — Render's free tier has 512 MB RAM
+fileWatcherType = "none"    # no source reloading in production
+enableStaticServing = false
+
+[browser]
+gatherUsageStats = false
+
+[theme]
+base = "light"
+primaryColor = "#1f77b4"
+backgroundColor = "#ffffff"
+secondaryBackgroundColor = "#f3f6fa"
+textColor = "#16202c"
+font = "sans serif"
+
+[client]
+showErrorDetails = false    # don't leak tracebacks to visitors
+toolbarMode = "minimal"

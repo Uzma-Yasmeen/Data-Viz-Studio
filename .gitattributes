@@ -1,0 +1,18 @@
+# Normalise text to LF in the repository.
+* text=auto eol=lf
+
+# These MUST stay LF — they run on Linux. CRLF here makes bash fail with
+# an unreadable "\r: command not found" during the Render deploy.
+*.sh        text eol=lf
+Procfile    text eol=lf
+Dockerfile  text eol=lf
+*.yml       text eol=lf
+*.yaml      text eol=lf
+*.toml      text eol=lf
+
+# Binary — never convert, never diff.
+*.pptx  binary
+*.png   binary
+*.jpg   binary
+*.pdf   binary
+*.xlsx  binary

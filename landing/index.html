@@ -1,0 +1,311 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DataViz Studio</title>
+<meta name="description" content="An interactive, no-code data analytics dashboard. Upload CSV, JSON or Excel and get instant EDA, charts and PDF reports.">
+
+<!-- Start the TCP/TLS handshake with Render before any JS runs, so the
+     wake request in wake.js goes out with almost zero setup cost.
+     Keep this host in sync with appUrl in config.js. -->
+<link rel="preconnect" href="https://dataviz-studio.onrender.com" crossorigin>
+<link rel="dns-prefetch" href="https://dataviz-studio.onrender.com">
+
+<style>
+  :root {
+    --bg: #f7f9fc;
+    --surface: #ffffff;
+    --border: #dfe6ef;
+    --text: #16202c;
+    --muted: #5c6b7f;
+    --primary: #1f77b4;
+    --primary-ink: #ffffff;
+    --accent: #14855f;
+    --warn: #b57209;
+    --shadow: 0 1px 2px rgba(16,32,48,.06), 0 12px 32px rgba(16,32,48,.08);
+    --radius: 14px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0e1520;
+      --surface: #16202e;
+      --border: #27374b;
+      --text: #e8eef6;
+      --muted: #98a8bd;
+      --primary: #5aa9e0;
+      --primary-ink: #08131e;
+      --accent: #48c99a;
+      --warn: #e0a83e;
+      --shadow: 0 1px 2px rgba(0,0,0,.4), 0 12px 32px rgba(0,0,0,.35);
+    }
+  }
+
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 16px/1.6 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    padding: 0 16px;
+  }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 56px 0 72px; }
+
+  .eyebrow {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-size: 13px; font-weight: 600; letter-spacing: .04em;
+    text-transform: uppercase; color: var(--muted);
+  }
+  h1 {
+    font-size: clamp(30px, 6vw, 46px);
+    line-height: 1.15; letter-spacing: -.02em;
+    margin: 14px 0 12px;
+  }
+  .lede {
+    font-size: clamp(16px, 2.4vw, 19px);
+    color: var(--muted); margin: 0 0 32px; max-width: 60ch;
+  }
+
+  /* ---- launch card ---- */
+  .launch {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 24px;
+    margin-bottom: 44px;
+  }
+  .launch h2 { margin: 0 0 14px; font-size: 16px; }
+  .launch-row { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; }
+  .btn {
+    appearance: none; border: 0; cursor: pointer;
+    font: inherit; font-weight: 650;
+    background: var(--primary); color: var(--primary-ink);
+    padding: 13px 24px; border-radius: 10px;
+    display: inline-flex; align-items: center; gap: 10px;
+    text-decoration: none;
+    transition: filter .15s ease, transform .05s ease;
+  }
+  .btn:hover { filter: brightness(1.08); }
+  .btn:active { transform: translateY(1px); }
+  .btn:focus-visible { outline: 3px solid var(--primary); outline-offset: 3px; }
+  .btn[aria-disabled="true"] { cursor: progress; filter: saturate(.5); }
+
+  .status { display: flex; align-items: center; gap: 9px; font-size: 14.5px; color: var(--muted); margin: 0; }
+  .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--muted); flex: none; }
+  .dot.waking { background: var(--warn); animation: pulse 1.2s ease-in-out infinite; }
+  .dot.ready  { background: var(--accent); animation: none; }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .25; } }
+  @media (prefers-reduced-motion: reduce) { .dot.waking { animation: none; } }
+
+  .track {
+    height: 5px; border-radius: 99px; background: var(--border);
+    margin-top: 18px; overflow: hidden;
+  }
+  .track[hidden] { display: none; }
+  .bar {
+    height: 100%; width: 0%; border-radius: 99px;
+    background: var(--primary);
+    transition: width .6s linear, background-color .3s ease;
+  }
+  .bar.ready { background: var(--accent); }
+  .note { font-size: 13.5px; color: var(--muted); margin: 12px 0 0; }
+
+  /* ---- content ---- */
+  h2 { font-size: 20px; letter-spacing: -.01em; margin: 40px 0 16px; }
+  .grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); }
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 18px;
+  }
+  .card h3 { margin: 0 0 6px; font-size: 15.5px; }
+  .card p { margin: 0; font-size: 14.5px; color: var(--muted); }
+
+  .tablewrap {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; overflow-x: auto;
+  }
+  table { width: 100%; border-collapse: collapse; font-size: 14.5px; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  th { font-size: 12.5px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); font-weight: 600; }
+  tbody tr:last-child td { border-bottom: 0; }
+
+  footer {
+    margin-top: 48px; padding-top: 22px;
+    border-top: 1px solid var(--border);
+    font-size: 14px; color: var(--muted);
+  }
+  a { color: var(--primary); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <span class="eyebrow">SR University &middot; Batch 19/20</span>
+  <h1>DataViz Studio</h1>
+  <p class="lede">
+    An interactive, no-code analytics dashboard. Upload a CSV, JSON or Excel
+    file and get automated exploratory analysis, correlation heatmaps, nine
+    kinds of chart and a downloadable PDF report &mdash; without writing a
+    line of code.
+  </p>
+
+  <section class="launch" aria-labelledby="launch-h">
+    <h2 id="launch-h">Launch the dashboard</h2>
+    <div class="launch-row">
+      <a class="btn" id="launch" href="#" role="button">
+        <span id="launch-label">Open DataViz Studio</span>
+        <span aria-hidden="true">&rarr;</span>
+      </a>
+      <p class="status" id="status" role="status" aria-live="polite">
+        <span class="dot waking" id="dot"></span>
+        <span id="status-text">Starting the server&hellip;</span>
+      </p>
+    </div>
+    <div class="track" id="track"><div class="bar" id="bar"></div></div>
+    <p class="note" id="note">
+      The app sleeps on Render&rsquo;s free tier when idle. Opening this page
+      already woke it &mdash; it should be ready in under a minute.
+    </p>
+  </section>
+
+  <h2>What it does</h2>
+  <div class="grid">
+    <div class="card">
+      <h3>Multi-format upload</h3>
+      <p>CSV, JSON (standard and line-delimited) and XLSX, with dtype inference on load.</p>
+    </div>
+    <div class="card">
+      <h3>Automated EDA</h3>
+      <p>Summary statistics, missing-value counts, dtype breakdown and a correlation heatmap, generated on upload.</p>
+    </div>
+    <div class="card">
+      <h3>Nine chart types</h3>
+      <p>Line, bar, scatter, histogram, boxplot, pie, heatmap, pairplot and regression, in colours you pick.</p>
+    </div>
+    <div class="card">
+      <h3>Intelligent sampling</h3>
+      <p>Datasets over 1,000 rows are sampled for plotting, so rendering stays responsive on large files.</p>
+    </div>
+    <div class="card">
+      <h3>Combined dashboard</h3>
+      <p>Charts persist in session state across interactions and stack into a single dashboard view.</p>
+    </div>
+    <div class="card">
+      <h3>PDF reporting</h3>
+      <p>Export every chart plus the statistical summary as one multi-page PDF report.</p>
+    </div>
+  </div>
+
+  <h2>Team</h2>
+  <div class="tablewrap">
+    <table>
+      <thead>
+        <tr><th>Roll no.</th><th>Name</th><th>Contribution</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>2503A51L34</td><td>Uzma Yasmeen</td><td>Development</td></tr>
+        <tr><td>2503A51L07</td><td>Sahasra</td><td>Data gathering</td></tr>
+        <tr><td>2503A51L05</td><td>Sathya Sri Charan</td><td>Testing</td></tr>
+        <tr><td>2503A51L33</td><td>Shiva</td><td>Documentation</td></tr>
+        <tr><td>2503A51L06</td><td>Nagamrutha</td><td>Presentation</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <footer>
+    Built with Streamlit, pandas, Matplotlib and seaborn.
+    <a id="repo-link" href="https://github.com/">Source on GitHub</a>.
+  </footer>
+</div>
+
+<script src="config.js"></script>
+<script src="wake.js"></script>
+<script>
+(function () {
+  "use strict";
+
+  var cfg = window.DATAVIZ_CONFIG || {};
+  var APP_URL = (cfg.appUrl || "").replace(/\/+$/, "");
+  var MAX_WAIT = cfg.maxWaitMs || 90000;
+  var EXPECTED = cfg.expectedColdStartMs || 55000;
+
+  var launch = document.getElementById("launch");
+  var label = document.getElementById("launch-label");
+  var statusText = document.getElementById("status-text");
+  var dot = document.getElementById("dot");
+  var track = document.getElementById("track");
+  var bar = document.getElementById("bar");
+  var note = document.getElementById("note");
+
+  if (cfg.repoUrl) document.getElementById("repo-link").href = cfg.repoUrl;
+
+  if (!APP_URL) {
+    dot.className = "dot";
+    statusText.textContent = "App URL not configured";
+    note.textContent = "Set appUrl in landing/config.js to your Render service URL.";
+    track.hidden = true;
+    return;
+  }
+
+  launch.href = APP_URL;
+
+  var ready = false;
+  var userWantsIn = false;   // true once the visitor has clicked Open
+
+  function setReady() {
+    if (ready) return;
+    ready = true;
+    dot.className = "dot ready";
+    statusText.textContent = "Server ready";
+    bar.classList.add("ready");
+    bar.style.width = "100%";
+    label.textContent = "Open DataViz Studio";
+    launch.removeAttribute("aria-disabled");
+    note.textContent = "The dashboard is awake and ready.";
+    if (userWantsIn) window.location.href = APP_URL;
+  }
+
+  /* Pace the progress bar against the expected cold start. It never
+     reaches 100% on its own — only a real readiness signal does that. */
+  var started = Date.now();
+  var ticker = setInterval(function () {
+    if (ready) { clearInterval(ticker); return; }
+    var elapsed = Date.now() - started;
+    bar.style.width = Math.min(94, elapsed / EXPECTED * 100).toFixed(1) + "%";
+    statusText.textContent = "Starting the server… " + Math.round(elapsed / 1000) + "s";
+  }, 500);
+
+  /* The bit that matters: the wake request goes out the moment the page
+     is hit, before the visitor has decided to click anything. */
+  DataVizWake.waitUntilAwake(APP_URL, { maxWaitMs: MAX_WAIT }).then(function (outcome) {
+    clearInterval(ticker);
+    if (outcome === "ready") { setReady(); return; }
+
+    // Waited past the cap. Render is almost certainly up by now, so let
+    // the visitor through rather than trapping them on this page.
+    ready = true;
+    dot.className = "dot";
+    bar.style.width = "100%";
+    statusText.textContent = "Taking longer than usual";
+    note.textContent = "The server is slow to start, but opening it directly should still work.";
+    if (userWantsIn) window.location.href = APP_URL;
+  });
+
+  launch.addEventListener("click", function (e) {
+    if (ready) return;               // let the browser navigate normally
+    e.preventDefault();
+    userWantsIn = true;
+    launch.setAttribute("aria-disabled", "true");
+    label.textContent = "Waking the server…";
+  });
+
+  // Re-ping if the tab sat in the background long enough for Render to nap.
+  document.addEventListener("visibilitychange", function () {
+    if (!document.hidden && ready) DataVizWake.ping(APP_URL);
+  });
+})();
+</script>
+</body>
+</html>

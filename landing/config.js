@@ -3,7 +3,7 @@
    --------------------------------------------------------------- */
 window.DATAVIZ_CONFIG = {
   // Your Render service URL, no trailing slash.
-  appUrl: "https://dataviz-studio.onrender.com",
+  appUrl: "https://data-viz-studio.onrender.com",
 
   // Shown in the footer. Leave blank to keep the default link.
   repoUrl: "https://github.com/Uzma-Yasmeen/Data-Viz-Studio",

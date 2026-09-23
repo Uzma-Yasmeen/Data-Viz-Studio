@@ -27,7 +27,7 @@ Render, copy `wake.js` over and add:
 ```html
 <script src="wake.js"></script>
 <script>
-  var APP = "https://dataviz-studio.onrender.com";
+  var APP = "https://data-viz-studio.onrender.com";
 
   // Boot the instance as soon as the link is hovered, focused, touched,
   // or scrolled near — typically several seconds before the click.
@@ -39,5 +39,5 @@ Or, to wake it on every page load regardless of intent:
 
 ```html
 <script src="wake.js"></script>
-<script>DataVizWake.ping("https://dataviz-studio.onrender.com");</script>
+<script>DataVizWake.ping("https://data-viz-studio.onrender.com");</script>
 ```

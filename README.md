@@ -6,7 +6,7 @@ kinds of chart and a downloadable PDF report — without writing a line of code.
 
 > Built with Streamlit · SR University · Batch 19/20
 
-[**Open the dashboard →**](https://dataviz-studio.onrender.com) &nbsp;•&nbsp;
+[**Open the dashboard →**](https://data-viz-studio.onrender.com) &nbsp;•&nbsp;
 [Landing page](https://uzma-yasmeen.github.io/Data-Viz-Studio/) &nbsp;•&nbsp;
 [Deployment guide](docs/DEPLOYMENT.md)
 
@@ -172,7 +172,7 @@ The short version — full walkthrough in [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT
 1. Push this repository to GitHub.
 2. On [Render](https://render.com): **New → Blueprint**, select the repo. It
    reads `render.yaml` and configures everything itself.
-3. Copy the resulting URL (e.g. `https://dataviz-studio.onrender.com`) into
+3. Copy the resulting URL (e.g. `https://data-viz-studio.onrender.com`) into
    `landing/config.js`, and into the two `<link rel="preconnect">` tags in
    `landing/index.html`.
 4. **Settings → Pages → Source: GitHub Actions** to publish the landing page.
@@ -212,10 +212,19 @@ expression if this is your only Render service.
 - if the visitor clicks **Open** before it's ready, the click is held and
   fires automatically the instant it is
 
-The `<img>` probe is the important one. Render returns a 502 HTML error page
-while an instance is still booting, and an opaque `fetch` can't tell that apart
-from success — but an `<img>` only fires `onload` for a real image response, so
-it cannot be fooled by the holding page.
+The `<img>` probe is the important one, and on this deployment it is the only
+one that actually fires. Two things make it necessary:
+
+- Render returns a 502 HTML error page while an instance is booting, and an
+  opaque `fetch` resolves on that exactly as it would on success. Relying on
+  `fetch` alone would send visitors into an error page.
+- The CORS probe doesn't work here. Checked against the live service,
+  `/_stcore/health` answers `200` but sends no `Access-Control-Allow-Origin`
+  header, so the browser blocks the read.
+
+An `<img>` only fires `onload` for a genuine image response, so neither problem
+affects it. `/favicon.png` on the live service returns `200`, `image/png`,
+1019 bytes.
 
 **Already have a portfolio site?** You don't need the landing page at all.
 Copy `landing/wake.js` across and preheat Render from the link itself:
@@ -225,7 +234,7 @@ Copy `landing/wake.js` across and preheat Render from the link itself:
 <script>
   // Boots the instance on hover, focus, touch or scroll-into-view —
   // usually several seconds before the visitor actually clicks.
-  DataVizWake.warmOnIntent("a.dataviz-link", "https://dataviz-studio.onrender.com");
+  DataVizWake.warmOnIntent("a.dataviz-link", "https://data-viz-studio.onrender.com");
 </script>
 ```
 

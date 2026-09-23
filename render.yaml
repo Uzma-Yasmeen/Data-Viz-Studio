@@ -3,7 +3,7 @@
 
 services:
   - type: web
-    name: dataviz-studio
+    name: data-viz-studio
     runtime: python
     plan: free
     region: singapore          # closest Render region to India; change if needed

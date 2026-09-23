@@ -7,6 +7,22 @@ Total time: about 15 minutes. Cost: nothing.
 
 ---
 
+## Current status
+
+The app is deployed and live at **<https://data-viz-studio.onrender.com>**.
+
+| Step | State |
+|------|-------|
+| 1. Render service | ✅ done |
+| 2. Landing page pointed at it | ✅ done — committed with the live URL |
+| 3. GitHub Pages enabled | ⏳ **you need to do this** (step 3 below) |
+| 4. `APP_URL` variable for keep-alive | ⏳ **you need to do this** (step 4 below) |
+
+Steps 1 and 2 are kept below for reference, and for anyone redeploying this
+from scratch.
+
+---
+
 ## 1. Deploy the app to Render
 
 1. Push this repository to GitHub.
@@ -18,7 +34,7 @@ free plan, Python runtime, `pip install -r requirements.txt` to build,
 `bash start.sh` to run, health check at `/_stcore/health`.
 
 The first build takes 4–6 minutes — Matplotlib and pandas are large wheels.
-When it finishes you get a URL like `https://dataviz-studio.onrender.com`.
+When it finishes you get a URL like `https://data-viz-studio.onrender.com`.
 
 > **If you set the service up by hand instead of via the blueprint**, the start
 > command must be `bash start.sh` (or the equivalent
@@ -43,15 +59,15 @@ literal value and cannot read the config file.
 **[`landing/config.js`](../landing/config.js):**
 
 ```js
-appUrl: "https://dataviz-studio.onrender.com",   // no trailing slash
+appUrl: "https://data-viz-studio.onrender.com",   // no trailing slash
 repoUrl: "https://github.com/Uzma-Yasmeen/Data-Viz-Studio",
 ```
 
 **[`landing/index.html`](../landing/index.html)**, near the top of `<head>`:
 
 ```html
-<link rel="preconnect" href="https://dataviz-studio.onrender.com" crossorigin>
-<link rel="dns-prefetch" href="https://dataviz-studio.onrender.com">
+<link rel="preconnect" href="https://data-viz-studio.onrender.com" crossorigin>
+<link rel="dns-prefetch" href="https://data-viz-studio.onrender.com">
 ```
 
 ---
@@ -76,7 +92,7 @@ variable:**
 
 | Name      | Value                                   |
 |-----------|-----------------------------------------|
-| `APP_URL` | `https://dataviz-studio.onrender.com`   |
+| `APP_URL` | `https://data-viz-studio.onrender.com`   |
 
 A *variable*, not a secret — the URL is public anyway, and secrets are masked
 in logs, which makes debugging a failed ping harder than it needs to be.
@@ -107,7 +123,7 @@ re-enables it.
 
 ```bash
 # Health endpoint responds
-curl -i https://dataviz-studio.onrender.com/_stcore/health
+curl -i https://data-viz-studio.onrender.com/_stcore/health
 # expect: HTTP/2 200 ... ok
 ```
 
@@ -153,10 +169,22 @@ would on success — so relying on `fetch` alone would redirect people into an
 error page. An `<img>` fires `onload` only for a genuine image response, so it
 cannot be fooled.
 
-Probe ③ exists because Streamlit only sends `Access-Control-Allow-Origin` on
-some versions and configurations, so probe ① failing proves nothing on its own.
-It needs two consecutive successes and at least 8 seconds elapsed before it is
-believed.
+Probe ① turns out **not** to work against this deployment. Checked against the
+live service, `/_stcore/health` returns `200` but sends no
+`Access-Control-Allow-Origin` header, so the browser blocks the cross-origin
+read. It is kept because it costs nothing and is definitive where it does work
+— but here it always reports `unknown`.
+
+Probe ③ is the backstop for exactly that case. Because an opaque response
+cannot be inspected, it is believed only after two consecutive successes and at
+least 8 seconds elapsed.
+
+Verified against `https://data-viz-studio.onrender.com`:
+
+| Probe | Result |
+|-------|--------|
+| ① CORS read of `/_stcore/health` | `200`, but no CORS header — blocked in-browser |
+| ③ `/favicon.png` | `200`, `image/png`, 1019 bytes — **this is the one that fires** |
 
 If none of them confirms within 90 seconds (`maxWaitMs` in `config.js`), the
 page stops blocking and lets the visitor through — by that point Render is

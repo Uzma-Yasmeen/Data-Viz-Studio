@@ -1,9 +1,20 @@
-# Keeps the Render free instance warm during the hours people actually
-# use it, so the landing page usually has nothing to wake.
+# Pings the Render instance so it doesn't sleep.
 #
-# Why not 24/7: the free tier grants 750 instance-hours a month. Pinging
-# round the clock burns ~730 of them on this one service, leaving no room
-# for anything else. The window below costs ~510 h/month.
+# THE SCHEDULE IS OFF ON PURPOSE. This repo doesn't get steady traffic, and
+# an automatic ping every 10 minutes would spend ~510 of the 750 free
+# instance-hours per month keeping the app awake for nobody. Running out
+# doesn't cost money, but it does take the app offline until the 1st of the
+# following month, and the quota is shared with any other free service on
+# the account.
+#
+# The landing page handles cold starts on its own: a visitor waits ~40s
+# behind a progress bar instead of a blank tab. That's the better trade at
+# this level of traffic.
+#
+# Run it by hand before a demo or presentation:
+#   Actions -> Keep Render awake -> Run workflow
+#
+# To put it back on automatic, uncomment the two schedule lines below.
 #
 # Set APP_URL as a repository variable:
 #   Settings -> Secrets and variables -> Actions -> Variables -> New
@@ -12,9 +23,10 @@
 name: Keep Render awake
 
 on:
-  schedule:
-    # Every 10 minutes, 03:00-19:00 UTC (08:30-00:30 IST).
-    - cron: "*/10 3-19 * * *"
+  # Disabled — see the note above. Uncomment to resume automatic pings
+  # every 10 minutes between 03:00 and 19:00 UTC (08:30-00:30 IST).
+  # schedule:
+  #   - cron: "*/10 3-19 * * *"
   workflow_dispatch:
 
 permissions:

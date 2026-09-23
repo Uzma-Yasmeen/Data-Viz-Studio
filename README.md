@@ -187,16 +187,21 @@ without it will build successfully and then fail its health check.
 
 Render's free tier spins an instance down after 15 minutes without traffic.
 The next visitor waits 30–60 seconds staring at a blank tab while it boots.
-Two layers address that:
+Two layers address that — the second is the one doing the work here:
 
-**Layer 1 — don't fall asleep.** `.github/workflows/keep-alive.yml` pings
-`/_stcore/health` every 10 minutes between 03:00 and 19:00 UTC (08:30–00:30
-IST). Inside that window the instance effectively never sleeps.
+**Layer 1 — don't fall asleep (currently off).**
+`.github/workflows/keep-alive.yml` can ping `/_stcore/health` on a schedule,
+which stops the instance sleeping at all. **Its schedule is commented out on
+purpose**, because this project doesn't get steady traffic and an automatic
+ping every 10 minutes would spend ~510 of the 750 free instance-hours per
+month keeping the app awake for nobody.
 
-Why not around the clock? The free tier grants 750 instance-hours per month.
-Staying up 24/7 consumes roughly 730 of them on this one service, leaving no
-headroom. The window above costs about 510 hours. Widen it in the cron
-expression if this is your only Render service.
+Exhausting the quota costs no money — Render suspends rather than bills —
+but it takes the app offline until the 1st of the next month, and the pool is
+shared with any other free service on the account.
+
+Run it by hand before a demo (**Actions → Keep Render awake → Run workflow**),
+or uncomment the `schedule:` block if traffic ever justifies it.
 
 **Layer 2 — wake it before it's needed.** If the instance *has* gone to sleep,
 `landing/index.html` handles it. The moment someone loads that page:

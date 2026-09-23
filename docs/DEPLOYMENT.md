@@ -15,11 +15,11 @@ The app is deployed and live at **<https://data-viz-studio.onrender.com>**.
 |------|-------|
 | 1. Render service | ✅ done |
 | 2. Landing page pointed at it | ✅ done — committed with the live URL |
-| 3. GitHub Pages enabled | ⏳ **you need to do this** (step 3 below) |
-| 4. `APP_URL` variable for keep-alive | ⏳ **you need to do this** (step 4 below) |
+| 3. GitHub Pages enabled | ✅ done — live at <https://uzma-yasmeen.github.io/Data-Viz-Studio/> |
+| 4. `APP_URL` variable for keep-alive | ✅ done — but the schedule is **off** by choice (step 4) |
 
-Steps 1 and 2 are kept below for reference, and for anyone redeploying this
-from scratch.
+Everything is deployed. The steps below are kept for reference, and for
+anyone redeploying this from scratch.
 
 ---
 
@@ -97,25 +97,33 @@ variable:**
 A *variable*, not a secret — the URL is public anyway, and secrets are masked
 in logs, which makes debugging a failed ping harder than it needs to be.
 
-[`keep-alive.yml`](../.github/workflows/keep-alive.yml) then pings
-`/_stcore/health` every 10 minutes from 03:00 to 19:00 UTC. Trigger it once by
-hand (**Actions → Keep Render awake → Run workflow**) to confirm it works.
+[`keep-alive.yml`](../.github/workflows/keep-alive.yml) can then ping
+`/_stcore/health`. Trigger it by hand to check it works:
+**Actions → Keep Render awake → Run workflow**. A healthy run logs
+`attempt 1 -> HTTP 200` and finishes in about 10 seconds.
 
-### Two caveats
+### The schedule is deliberately off
 
-**Instance hours.** The free tier gives 750 per month. The window above uses
-roughly 510, leaving headroom. Pinging 24/7 would use about 730 — technically
-under the cap, but it would starve any other free service on your account. To
-widen the window, edit the cron:
+The `schedule:` block in that workflow is commented out. Pinging every 10
+minutes during waking hours costs ~510 of the 750 free instance-hours per
+month, which is a poor trade for a project without steady traffic — the
+landing page already covers cold starts, and a visitor waits ~40s behind a
+progress bar rather than a blank tab.
+
+Running out of instance-hours is **not** a charge. Render suspends the
+service until the 1st of the next month. But the pool is shared across every
+free service on the account, so one idle app pinging itself can take down
+another.
+
+To turn automatic pings back on, uncomment these lines:
 
 ```yaml
-- cron: "*/10 3-19 * * *"    # current: 03:00-19:00 UTC
-- cron: "*/10 * * * *"       # every 10 min, all day
+# schedule:
+#   - cron: "*/10 3-19 * * *"    # 03:00-19:00 UTC (08:30-00:30 IST)
 ```
 
-**Scheduled workflows get disabled.** GitHub pauses cron schedules in public
-repositories after 60 days without commits, and emails you first. Any push
-re-enables it.
+Note that GitHub also pauses cron schedules in public repositories after 60
+days with no commits, and emails you first. Any push re-enables them.
 
 ---
 
